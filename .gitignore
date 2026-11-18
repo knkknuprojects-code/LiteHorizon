@@ -1,0 +1,60 @@
+# Never commit local credentials or machine-specific settings.
+.horizon.env
+.env
+.env.*
+!.env.example
+!*.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Python tooling and build products.
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.tox/
+build/
+dist/
+.ipynb_checkpoints/
+.idea/
+.vscode/
+.DS_Store
+
+# Local model assets and run products.
+/data/
+/corpus/
+/raw/
+/records/
+/runs/
+/models/
+/adapters/
+/bench/
+/out/
+/checkpoints/
+*.safetensors
+*.ckpt
+*.pt
+*.pth
+*.bin
+
+# Keep only the documentation placeholders in these data folders.
+/collection/*
+!/collection/README.md
+/patents/*
+!/patents/README.md
+/datasets/*
+!/datasets/README.md
+/reports/*
+!/reports/README.md
+
+# If local notebooks are created, they need explicit review before publication.
+.ipython/

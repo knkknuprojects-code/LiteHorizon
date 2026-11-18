@@ -1,0 +1,55 @@
+# feeds-tech.toml — Tech/AI feeds for the "tech" topic dataset.
+#
+#   horizon gather feeds --config feeds-tech.toml --scan --data-dir datasets/tech
+#
+# A per-topic seed set for C6 diversity: English + Ukrainian, so the corpus isn't
+# monolingual (dataset-stats reports the writing-system mix — aim for a real Cyrillic
+# share, not 0%). Edit freely; verify each URL resolves for your setup. RSS feeds only
+# expose recent entries, so reaching ~1000 texts means many feeds + repeated runs over
+# time (gather dedups, so re-running accumulates) and/or `gather arxiv` for volume.
+
+# --- English -----------------------------------------------------------------
+[[feed]]
+name = "TechCrunch"
+url = "https://techcrunch.com/feed/"
+
+[[feed]]
+name = "The Verge"
+url = "https://www.theverge.com/rss/index.xml"
+
+[[feed]]
+name = "Ars Technica"
+url = "http://feeds.arstechnica.com/arstechnica/index/"
+
+[[feed]]
+name = "Wired"
+url = "https://www.wired.com/feed/rss"
+
+[[feed]]
+name = "Hacker News (front page)"
+url = "https://hnrss.org/frontpage"
+
+[[feed]]
+name = "MIT Technology Review"
+url = "https://www.technologyreview.com/feed/"
+
+[[feed]]
+name = "Engadget"
+url = "https://www.engadget.com/rss.xml"
+
+# --- Ukrainian (verify these resolve; swap in your preferred UA tech sources) --
+[[feed]]
+name = "ITC.ua"
+url = "https://itc.ua/feed/"
+
+[[feed]]
+name = "AIN.ua"
+url = "https://ain.ua/feed/"
+
+[[feed]]
+name = "Mezha.media"
+url = "https://mezha.media/feed/"
+
+[[feed]]
+name = "dev.ua"
+url = "https://dev.ua/rss"

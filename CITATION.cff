@@ -1,0 +1,24 @@
+cff-version: 1.2.0
+message: "Draft software citation. Verify code authorship and the final paper metadata before public release."
+type: software
+title: "LiteHorizon: Modular, Provenance-Preserving Horizon-Scanning Support"
+version: "0.0.1"
+authors:
+  - family-names: Nasirov
+    given-names: Emil
+  - family-names: Taranukha
+    given-names: Volodymyr
+  - family-names: Marchenko
+    given-names: Oleksandr
+  - family-names: Anisimov
+    given-names: Anatoly
+abstract: >-
+  Research software for source acquisition, structured language-model analysis,
+  semantic aggregation, temporal indicators, and auditable horizon-scanning reports.
+keywords:
+  - horizon scanning
+  - natural language processing
+  - language models
+  - provenance
+  - semantic aggregation
+  - research software

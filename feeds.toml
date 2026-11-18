@@ -1,0 +1,37 @@
+# feeds.toml — RSS/Atom sources for `horizon gather feeds`.
+#
+# Each [[feed]] is one source. `horizon gather feeds` fetches them all into corpus/,
+# normalized and deduplicated, in a single run. Edit freely: the tool is
+# domain-agnostic, so swap these tech feeds for policy, markets, science, or
+# geopolitics sources as your landscape requires.
+#
+#   name — label recorded as the `source` in corpus/manifest.jsonl.
+#   url  — the RSS/Atom feed itself.
+
+[[feed]]
+name = "TechCrunch"
+url = "https://techcrunch.com/feed/"
+
+[[feed]]
+name = "The Verge"
+url = "https://www.theverge.com/rss/index.xml"
+
+[[feed]]
+name = "Ars Technica"
+url = "http://feeds.arstechnica.com/arstechnica/index/"
+
+[[feed]]
+name = "Wired"
+url = "https://www.wired.com/feed/rss"
+
+[[feed]]
+name = "Hacker News (front page)"
+url = "https://hnrss.org/frontpage"
+
+[[feed]]
+name = "MIT Technology Review"
+url = "https://www.technologyreview.com/feed/"
+
+[[feed]]
+name = "Engadget"
+url = "https://www.engadget.com/rss.xml"

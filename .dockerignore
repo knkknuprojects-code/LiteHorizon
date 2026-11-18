@@ -1,0 +1,32 @@
+# Keep the build context small and free of data — see Dockerfile.
+.git/
+.venv/
+venv/
+.idea/
+.claude/
+.pytest_cache/
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.DS_Store
+
+# 216 MB of committed workbooks. The records are rebuilt from the PVC checkout by
+# k8s/prep-job.yaml, never from the image.
+collection/
+
+# Local data and outputs (gitignored, but a build context ignores .gitignore).
+data/
+datasets/
+corpus/
+raw/
+records/
+runs/
+models/
+bench/
+reports/*.pdf
+
+# Secrets must never enter an image layer.
+.horizon.env
+*.env

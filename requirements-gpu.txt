@@ -1,0 +1,60 @@
+# Cluster (Linux + CUDA) inference environment for Horizon.
+#
+# Why this file exists instead of an extra: pyproject.toml's ceilings
+# (transformers<5, numpy<2) are Intel-Mac artifacts — torch's last x86-macOS wheel
+# is 2.2.2, and transformers 5.x needs torch>=2.4. An extra cannot widen a base
+# dependency, and a pip *constraints* file can only narrow one, so the GPU box
+# installs from here and then adds the package itself without its dependencies:
+#
+#     python -m venv .venv && . .venv/bin/activate
+#     pip install -r requirements-gpu.txt
+#     pip install -e . --no-deps
+#     pytest                      # proves the install without loading a model
+#
+# Keep this in sync with pyproject.toml by hand. After the first successful install
+# on a box, capture the exact resolution as the real lockfile and commit it:
+#
+#     pip freeze > requirements-gpu.lock.txt
+
+# --- core ---------------------------------------------------------------------
+# Gemma 4 (model_type "gemma4") landed in transformers 5.5.0; nothing older can
+# load it. transformers 5 also dropped the `torch_dtype=` load kwarg in favour of
+# `dtype=` — horizon.llm.transformers_client resolves the name at runtime.
+transformers>=5.5
+# torch>=2.4 is transformers 5's floor; >=2.6 additionally clears the
+# CVE-2025-32434 restriction that refuses torch.load pickle checkpoints.
+# On PyPI the default Linux torch wheel already bundles CUDA 12.x. Only if the
+# host driver is older than that toolkit, install torch first from the matching
+# index, e.g.:  pip install --index-url https://download.pytorch.org/whl/cu121 torch
+torch>=2.6
+numpy>=1.26
+# accelerate backs --device-map/--max-memory, i.e. sharding a model across cards.
+accelerate>=0.33
+sentence-transformers>=2.2
+
+# --- 4-bit inference ----------------------------------------------------------
+# CUDA-only. This is what makes a large Gemma 4 variant fit a small card:
+# gemma-4-26B-A4B-it is ~62 GB in bf16 but ~18 GB at 4-bit (estimates —
+# measure gpu_peak_gb with scripts/bench_models.py).
+bitsandbytes>=0.43
+
+# --- corpus building ----------------------------------------------------------
+# openpyxl reads the committed collection/*.xlsx workbooks, so the 542 MB record
+# shards can be rebuilt on the box instead of copied. feedparser is only needed
+# for the RSS adapter.
+openpyxl>=3.1
+feedparser>=6.0
+
+# --- verification -------------------------------------------------------------
+# Not an inference dependency, but the install is proved by running the suite (it
+# loads no model), and scripts/bootstrap_box.sh does exactly
+# that. `pip install -e . --no-deps` skips the [dev] extra by design, so without this
+# line the verification step fails on a box that is otherwise perfectly set up.
+# Mirrors the [dev] extra's floor in pyproject.toml.
+pytest>=8.0
+
+# --- deliberately absent ------------------------------------------------------
+# trl / peft (the [train] extra): fine-tuning is not what this box is for, and
+# trl 0.12.x requires transformers<4.47 — irreconcilable with Gemma 4's >=5.5.
+# Leaving them out makes that conflict impossible rather than merely unlikely.
+# Add peft only if you need HORIZON_ADAPTER to load a LoRA adapter at inference.

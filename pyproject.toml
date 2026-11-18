@@ -1,0 +1,94 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "horizon"
+version = "0.0.1"
+description = "Domain-agnostic horizon-scanning tool powered by Google's Gemma model"
+requires-python = ">=3.12"
+dependencies = [
+    # Pins reflect the Intel-Mac dev machine: torch's last x86-macOS wheel is 2.2.2,
+    # so transformers must stay <5 (5.x requires torch>=2.4) and numpy <2 (torch
+    # 2.2.2 was built against numpy 1.x). The A100 cluster can relax these.
+    "transformers>=4.44,<5",
+    "torch>=2.2",
+    "numpy<2",
+    "accelerate>=0.33",
+    # Phase 3 embeddings. Pulls scikit-learn transitively (used by the
+    # agglomerative clusterer). The numpy<2 floor above is load-bearing: a bare
+    # install would upgrade numpy to 2.x and break torch 2.2.2's ABI.
+    "sentence-transformers>=2.2",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "black>=24.0",
+]
+# Fine-tuning (Phase 4). Verified to install AND run a LoRA SFT step on CPU under
+# the Intel-Mac pins (torch 2.2.2 / transformers<5 / numpy<2). The trl<0.13
+# ceiling is load-bearing on this machine: trl>=0.13 calls
+# torch.distributed.tensor.DTensor, which only exists on torch>=2.4 — newer trl
+# installs but crashes at train time here. trl 0.12.x also pulls transformers down
+# to ~4.46 (tokenizers 0.20.x); that stays within our >=4.44,<5 floor and the full
+# suite + sentence-transformers pass on it. The A100 cluster (newer torch/CUDA) can
+# relax the trl ceiling. (Note: transformers 4.57 refuses to torch.load pickle
+# checkpoints on torch<2.6 per CVE-2025-32434 — use safetensors weights; Gemma/Qwen
+# ship them.)
+train = [
+    "trl>=0.12,<0.13",  # verified 0.12.2
+    "peft>=0.13",       # verified 0.19.1
+    "datasets>=2.20",   # verified 5.0.0
+]
+# QLoRA 4-bit quantization — CUDA-only (bitsandbytes). Installed on the A100
+# cluster, never on the Mac.
+train-gpu = [
+    "bitsandbytes",
+]
+# 4-bit *inference* quantization — CUDA-only (bitsandbytes), cluster-side, never on
+# the Mac. Distinct from train-gpu in purpose, not in package: this is what makes a
+# large Gemma fit a small card for a bulk scan. Note that a
+# GPU box installs from requirements-gpu.txt (transformers>=5.5 for Gemma 4), not
+# from these extras, whose resolution is bounded by the Intel-Mac ceilings above.
+infer-gpu = [
+    "bitsandbytes",
+]
+# Corpus gathering (Phase 5). Only the RSS adapter needs a dependency; the
+# local-dir adapter and normalization are stdlib-only. Lazy-imported, so the core
+# package and tests don't require it. feedparser is pure-Python — no ABI concern
+# with the numpy<2 / torch 2.2.2 pins. openpyxl is needed only by
+# `collection-build` (reading the collection/ .xlsx workbooks) and is likewise
+# lazy-imported — `gather wos` reads the built JSONL shards without it.
+ingest = [
+    "feedparser>=6.0",
+    "openpyxl>=3.1",
+]
+# Plain-URL gathering (Phase 5, C1 follow-on). trafilatura does main-content /
+# boilerplate extraction (the C3 strip) and best-effort date detection. OPTIONAL:
+# UrlSource falls back to the stdlib HTML strip when it's absent — cleaner text with
+# it, still usable without. Pure-Python + lxml, no numpy — safe under the pins.
+url = [
+    "trafilatura>=1.8",
+]
+# API teacher (Phase 4/5 distillation). ``google-genai`` is Google's current
+# unified GenAI SDK; used only by GeminiClient and lazy-imported, so the core
+# package and tests never require it. Pure-Python HTTP client — no numpy/torch ABI
+# concerns, safe under the Intel-Mac pins. Set GEMINI_API_KEY (or GOOGLE_API_KEY).
+teacher = [
+    "google-genai>=1.0",
+]
+
+[project.scripts]
+horizon = "horizon.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/horizon"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+
+[tool.black]
+line-length = 88
+target-version = ["py312"]
