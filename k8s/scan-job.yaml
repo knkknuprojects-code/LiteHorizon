@@ -1,0 +1,84 @@
+# The full corpus pass: one pod per year shard.
+#
+#   kubectl apply -f k8s/scan-job.yaml
+#   kubectl logs -f job/horizon-scan --all-containers --prefix
+#
+# This is the Kubernetes spelling of a SLURM array job — 12
+# independent inference processes, no distributed training, so a plain Indexed Job is
+# the right primitive and a Kubeflow PyTorchJob would only add moving parts.
+#
+# Resuming is re-applying: the store is append-only and analysed items are skipped, so
+# an eviction, a preemption or a node drain costs only the in-flight batch.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: horizon-scan
+  labels:
+    app: horizon
+spec:
+  completions: 12            # 2015..2026, ~22k items each
+  completionMode: Indexed    # gives each pod JOB_COMPLETION_INDEX
+  parallelism: 2             # == GPUs you were granted; raise once the quota is known
+  backoffLimit: 12           # ~1 retry per shard; see the circuit-breaker note below
+  template:
+    metadata:
+      labels: {app: horizon, role: scan}
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: scan
+          image: REPLACE_ME_REGISTRY/horizon:REPLACE_ME_TAG
+          workingDir: /opt/horizon
+          command: ["/bin/bash", "-c"]
+          args:
+            - |
+              set -euo pipefail
+              YEAR=$(( 2015 + ${JOB_COMPLETION_INDEX} ))
+              echo "shard index=${JOB_COMPLETION_INDEX} year=${YEAR}"
+              exec scripts/run_scan.sh "${YEAR}" "${HORIZON_MODEL_ID}" "${BATCH}" "${QUANT}"
+          env:
+            - name: HORIZON_SCRATCH
+              value: /scratch/horizon
+            - name: HF_HOME
+              value: /scratch/horizon/hf
+            # prep-job.yaml already fetched the weights; offline means a hub outage
+            # cannot kill a run that is hours deep.
+            - name: HF_HUB_OFFLINE
+              value: "1"
+            - name: HORIZON_MODEL_ID
+              value: google/gemma-4-12B-it
+            - name: BATCH
+              value: "8"           # the throughput lever — set it from the sweep
+            - name: QUANT
+              value: "none"        # or "4bit"
+            - name: OMP_NUM_THREADS
+              value: "8"
+          resources:
+            requests: {cpu: "8", memory: 48Gi, nvidia.com/gpu: 1}
+            limits:   {cpu: "8", memory: 64Gi, nvidia.com/gpu: 1}
+          volumeMounts:
+            - {name: scratch, mountPath: /scratch}
+            # The PVC working copy overlays the image's baked copy. The editable
+            # install records this path, so mounted code runs without a rebuild.
+            - {name: scratch, mountPath: /opt/horizon, subPath: horizon-repo}
+            # Kubernetes defaults /dev/shm to 64Mi, which torch will hit.
+            - {name: dshm, mountPath: /dev/shm}
+      volumes:
+        - name: scratch
+          persistentVolumeClaim:
+            claimName: horizon-scratch
+        - name: dshm
+          emptyDir: {medium: Memory, sizeLimit: 8Gi}
+#
+# Two things worth knowing before this runs unattended:
+#
+# 1. Each pod writes its own dataset root ($HORIZON_SCRATCH/ds/wos-<year>), which is a
+#    correctness requirement and not tidiness: concurrent appends to one analyses.jsonl
+#    are not safe on a shared filesystem. Merge afterwards, which is valid because the
+#    store is append-only with last-write-wins per (content_hash, prompt_version):
+#      cat "$HORIZON_SCRATCH"/ds/wos-*/data/analyses.jsonl > merged/data/analyses.jsonl
+#
+# 2. Exit code 2 means the circuit breaker tripped after 10 consecutive failures —
+#    almost always an OOM the first item hid. Restarting will not fix it: lower BATCH
+#    or set QUANT=4bit. That is why backoffLimit is low; a high one would burn the
+#    quota re-running a model that cannot fit.

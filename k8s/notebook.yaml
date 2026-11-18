@@ -1,0 +1,37 @@
+# A Kubeflow Notebook with a GPU and the same PVC — the interactive half of the work.
+#
+# This is what makes Kubernetes workable for the model sweep rather than only for the
+# batch run: scripts/sweep.sh is dozens of short exploratory runs where the edit/rerun
+# latency dominates, and a long-lived pod with the working copy on the PVC gives that
+# loop back. Use the terminal inside it; the batch Job below reuses the same image.
+#
+# Most Kubeflow installs create Notebooks through the UI — if so, reproduce these
+# settings there instead of applying this: same image, 1 GPU, and horizon-scratch
+# mounted at /scratch.
+apiVersion: kubeflow.org/v1
+kind: Notebook
+metadata:
+  name: horizon-dev
+  labels:
+    app: horizon
+spec:
+  template:
+    spec:
+      containers:
+        - name: notebook
+          image: REPLACE_ME_REGISTRY/horizon:REPLACE_ME_TAG
+          env:
+            - {name: HORIZON_SCRATCH, value: /scratch/horizon}
+            - {name: HF_HOME,         value: /scratch/horizon/hf}
+          resources:
+            requests: {cpu: "4", memory: 32Gi}
+            limits:   {cpu: "8", memory: 64Gi, nvidia.com/gpu: 1}
+          volumeMounts:
+            - {name: scratch, mountPath: /scratch}
+            - {name: dshm,    mountPath: /dev/shm}
+      volumes:
+        - name: scratch
+          persistentVolumeClaim:
+            claimName: horizon-scratch
+        - name: dshm
+          emptyDir: {medium: Memory, sizeLimit: 8Gi}

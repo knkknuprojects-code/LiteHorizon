@@ -1,0 +1,22 @@
+# Shared scratch for Horizon.
+#
+# ReadWriteMany is load-bearing, not a preference: the scan Job runs many pods that
+# mount this simultaneously, and the Notebook keeps it mounted alongside them. Many
+# default block-backed StorageClasses are RWO only — ask the admins which class gives
+# RWX before applying this.
+#
+# 200Gi budget: ~150Gi model cache (a bf16 gemma-4 checkpoint is 50-75 GB and you will
+# hold more than one across the sweep), 542 MB record shards, 216 MB workbooks, the
+# working copy, and GB-scale analyses/logs/bench output.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: horizon-scratch
+  labels:
+    app: horizon
+spec:
+  accessModes: ["ReadWriteMany"]
+  storageClassName: REPLACE_ME_RWX_STORAGECLASS
+  resources:
+    requests:
+      storage: 200Gi

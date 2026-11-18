@@ -1,0 +1,65 @@
+# One-shot preparation: rebuild the record shards and pre-download the model. Run this
+# once, before the scan Job.
+#
+#   kubectl apply -f k8s/prep-job.yaml
+#   kubectl logs -f job/horizon-prep
+#
+# Prerequisite: the working copy is already on the PVC at /scratch/horizon-repo. There
+# is no git remote yet, so it gets there by `kubectl cp` or from the Notebook terminal.
+#
+# Rebuilding beats copying (542 MB), but the rebuild MUST be verified against the local
+# one: content_hash over "title. abstract" is the store key, so a differing rebuild
+# makes every result unjoinable with the local baselines. This job prints the record
+# count and the 2019 shard checksum for exactly that comparison.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: horizon-prep
+  labels:
+    app: horizon
+spec:
+  backoffLimit: 2
+  template:
+    metadata:
+      labels: {app: horizon, role: prep}
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: prep
+          image: REPLACE_ME_REGISTRY/horizon:REPLACE_ME_TAG
+          workingDir: /opt/horizon
+          command: ["/bin/bash", "-c"]
+          args:
+            - |
+              set -euo pipefail
+              echo "=== rebuild records from collection/*.xlsx ==="
+              horizon collection-build --data-dir "$HORIZON_SCRATCH/wos-scopus"
+
+              echo "=== verify against the local build before trusting any number ==="
+              python -c "import json;print('records:', json.load(open('$HORIZON_SCRATCH/wos-scopus/build-report.json'))['records'])"
+              sha1sum "$HORIZON_SCRATCH/wos-scopus/records/2019.jsonl"
+
+              echo "=== pre-download the model, so load time is not counted as inference ==="
+              # The python API rather than a CLI: huggingface_hub 1.x (which
+              # transformers 5 pulls in) renamed `huggingface-cli` to `hf`, and
+              # snapshot_download is the one spelling stable across both.
+              python -c "from huggingface_hub import snapshot_download; snapshot_download('$HORIZON_MODEL_ID')"
+          env:
+            # The PVC checkout overlays the image's baked copy; the editable install
+            # points at this path, so the mounted code is what runs.
+            - name: HORIZON_SCRATCH
+              value: /scratch/horizon
+            - name: HF_HOME
+              value: /scratch/horizon/hf
+            - name: HORIZON_MODEL_ID
+              value: google/gemma-4-12B-it
+          resources:
+            requests: {cpu: "4", memory: 16Gi}
+            limits:   {cpu: "8", memory: 32Gi}
+          volumeMounts:
+            - {name: scratch, mountPath: /scratch}
+            - {name: scratch, mountPath: /opt/horizon, subPath: horizon-repo}
+      volumes:
+        - name: scratch
+          persistentVolumeClaim:
+            claimName: horizon-scratch
