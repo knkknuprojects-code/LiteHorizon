@@ -1,0 +1,6 @@
+Un laboratorio de investigación publicó esta semana un nuevo modelo de lenguaje de
+pesos abiertos, afirmando un rendimiento puntero en pruebas de razonamiento con una
+fracción del número habitual de parámetros. Varias empresas emergentes ya anunciaron
+planes para ajustarlo a asistentes específicos de dominio, y un importante proveedor
+de nube estaría en conversaciones para alojarlo. Los analistas señalan el rápido giro
+hacia modelos más pequeños y eficientes que pueden ejecutarse en hardware de consumo.

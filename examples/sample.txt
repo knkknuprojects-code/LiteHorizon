@@ -1,0 +1,6 @@
+A research lab released a new open-weights language model this week, claiming
+state-of-the-art performance on reasoning benchmarks at a fraction of the usual
+parameter count. Several startups have already announced plans to fine-tune it for
+domain-specific assistants, and a major cloud provider is reportedly in talks to
+host it. Analysts note the rapid shift toward smaller, efficient models that can run
+on consumer hardware.
