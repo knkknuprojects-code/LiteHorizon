@@ -1,0 +1,50 @@
+# Exclusions for scripts/push_to_box.sh. One pattern per line; rsync ignores blank
+# lines and lines starting with '#'. A file rather than a wall of --exclude flags
+# because a long one-liner breaks the moment a paste wraps it.
+#
+# Note what is NOT here: collection/ (216 MB of .xlsx) is sent on purpose, because the
+# record shards are rebuilt on the box and that is faster than transferring 542 MB.
+
+# Secrets. The Gemini API key must never reach a shared machine.
+.horizon.env
+*.env
+
+# Local virtualenv and caches — the box builds its own.
+.venv/
+.pytest_cache/
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+
+# Editor / OS / agent state.
+.idea/
+.claude/
+.DS_Store
+
+# History. 219 MB, and nothing on a box needs it: the code arrives by rsync and the
+# provenance that matters is in the run manifests, which record the model, quant,
+# batch, prompt version and library versions per run. Halves the first transfer.
+# A box that already received it keeps a stale copy — rsync does not delete; remove it
+# by hand there if a `git status` on the box would be misleading.
+.git/
+
+# Logs and raw sweep output pulled *off* a box (gitignored). Sending them back would
+# be a round trip for nothing.
+out/
+
+# Generated data. datasets/ is 571 MB and gets rebuilt by collection-build; the rest
+# are per-run outputs that belong to whichever machine produced them.
+datasets/
+data/
+corpus/
+raw/
+records/
+build-report.json
+runs/
+models/
+bench/
+
+# PDFs are local by convention (reports/*.pdf is gitignored); the .md sources go.
+reports/*.pdf
